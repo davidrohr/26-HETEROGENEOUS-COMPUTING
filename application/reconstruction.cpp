@@ -308,23 +308,6 @@ GPUh() size_t reconstruction::CorrectionBufferSize() const
 
 int reconstruction::reconstruct(const detector& __restrict det)
 {
-	int processId = 0;
-	std::vector<pid_t> processPIDs;
-	if (config.nThreads && config.multiProcess) { // Start nThreads - 1 additional processes, if config.multiProcess set
-		for (int i = 0; i < config.nThreads - 1; i++) {
-			pid_t pid = fork();
-			if (pid < 0) {
-				printf("Error creating process!\n");
-				exit(1);
-			} else if (pid == 0) {
-				processId = i + 1;
-				break;
-			} else {
-				processPIDs.emplace_back(pid);
-			}
-		}
-	}
-
 	estimateParticleBufferSize(det.nParticles);
 	ReserveMemory(det.mNEventCount, mParticleBufferSize, det.nParticles, det.nHitsCalo);
 
@@ -365,6 +348,24 @@ int reconstruction::reconstruct(const detector& __restrict det)
 
 	HighResTimer timer;
 	timer.Start();
+
+	int processId = 0;
+	std::vector<pid_t> processPIDs;
+	if (config.nThreads && config.multiProcess) { // Start nThreads - 1 additional processes, if config.multiProcess set
+		for (int i = 0; i < config.nThreads - 1; i++) {
+			pid_t pid = fork();
+			if (pid < 0) {
+				printf("Error creating process!\n");
+				exit(1);
+			} else if (pid == 0) {
+				processId = i + 1;
+				break;
+			} else {
+				processPIDs.emplace_back(pid);
+			}
+		}
+	}
+
 	std::vector<std::thread> threadWorkers;
 	if (config.nThreads > 1 && !config.multiProcess) { // Start nThreads - 1 additional threads, if config.multiProcess is not set
 		threadWorkers.resize(config.nThreads - 1);
